@@ -24,7 +24,7 @@ import (
 var usage = `
 Usage:
 
-    ping [-c count] [-i interval] [-t timeout] host
+    ping [-bind-addr listen-address] [-c count] [-i interval] [-t timeout] host
 `
 
 func main() {
@@ -40,6 +40,13 @@ func main() {
 		return
 	}
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		fmt.Println("Unable to get hostname")
+		fmt.Println(err)
+		return
+	}
+
 	// Set up Prometheus GaugeVec object
 	pingGaugeVec := promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -47,8 +54,8 @@ func main() {
 			Help: "Historical ping RTTs over time (ms)",
 		},
 		[]string{
-			// One label to specify ping target
-			"targetHost",
+			"targetHost", // Specify ping target
+			"hostname",   // Name of host running ping-exporter
 		},
 	)
 
@@ -73,7 +80,7 @@ func main() {
 	}()
 
 	// Get Gauge object with targetHost
-	pingGauge := pingGaugeVec.WithLabelValues(targetHost)
+	pingGauge := pingGaugeVec.WithLabelValues(targetHost, hostname)
 
 	// Define OnRecv function for receiving ICMPs => Update gauge
 	pinger.OnRecv = func(pkt *ping.Packet) {
